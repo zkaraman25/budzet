@@ -217,6 +217,45 @@ dialog.acct input{font:inherit;color:inherit;background:var(--bg);border:1px sol
 dialog.acct input:focus{outline:none;border-color:var(--a)}
 dialog.acct .err{color:var(--warn);font-size:13px;min-height:1.2em;margin-top:8px}
 dialog.acct .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* dialozi, kao kod aparata */
+dialog.dlg{width:min(500px,calc(100% - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--fg);box-shadow:0 24px 64px rgba(0,0,0,.28)}
+dialog.dlg[open]{animation:dlgIn .26s cubic-bezier(.2,.8,.2,1)}
+dialog.dlg::backdrop{background:rgba(15,15,22,.5)}
+@keyframes dlgIn{from{opacity:0;transform:translateY(14px) scale(.97)}}
+.dlgIn{padding:22px}
+.dlgIn h2{font-size:19px;margin:0}
+.dlgIn p{color:var(--muted);font-size:14px;margin:8px 0 0}
+.fld{display:block;margin-top:14px}
+.fld > span{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--muted)}
+.fld input[type=text],.fld input[type=number],.fld select{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;font-size:16px}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--a);box-shadow:0 0 0 3px var(--a-soft)}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.catpick{display:flex;flex-wrap:wrap;gap:8px}
+.catpick label{cursor:pointer;position:relative}
+.catpick input{position:absolute;opacity:0;width:1px;height:1px}
+.catpick span{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;font-size:14px;font-weight:500;color:var(--muted);transition:background .15s,border-color .15s,color .15s}
+.catpick svg.i{width:15px;height:15px}
+.catpick input:checked + span{background:var(--a-soft);border-color:var(--a);color:var(--a-strong);font-weight:600}
+.dlg-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.dlg-err{color:var(--warn);font-size:13px;min-height:1.2em;margin-top:10px}
+button.danger{background:var(--warn);border-color:var(--warn);color:#fff}
+.icon-btn{width:28px;height:28px;padding:0;display:inline-grid;place-items:center;border:0;border-radius:7px;background:transparent;color:var(--muted);flex:none}
+.icon-btn:hover{background:var(--hover);color:var(--warn);border:0}
+.icon-btn svg.i{width:15px;height:15px}
+/* footer zbrojeva, kao kod aparata */
+.totals{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px 0;padding:12px 12px 12px 16px;background:var(--a-faint);border:1px solid var(--line);border-top:2px solid var(--a-pale);border-radius:0 0 10px 10px;margin-top:-1px}
+.tot-main{margin-right:auto;align-self:center;padding-right:16px}
+.tot-main b{display:block;font-size:15px;font-weight:700}
+.tot-main small{display:block;color:var(--muted);font-size:13px}
+.tot-box{display:flex;flex-direction:column;justify-content:center;align-items:flex-end;min-width:150px;padding:4px 22px;border-left:1px solid var(--line)}
+.tot-label{font-size:12px;font-weight:500;color:var(--muted);white-space:nowrap}
+.tot-val{font-size:17px;font-weight:700;letter-spacing:-.015em;white-space:nowrap}
+.tot-box.free{margin-left:10px;padding:8px 18px;border-left:0;border-radius:10px;background:var(--a-soft)}
+.tot-box.free .tot-label,.tot-box.free .tot-val{color:var(--a-strong)}
+.tot-box.free.neg{background:color-mix(in srgb,var(--warn) 15%,var(--card))}
+.tot-box.free.neg .tot-label,.tot-box.free.neg .tot-val{color:var(--warn)}
+@media (max-width:640px){.tot-box{min-width:0;padding:4px 12px}.tot-main{flex-basis:100%;padding:0 0 6px}}
 </style>
 
 </head>
@@ -280,6 +319,7 @@ dialog.acct .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
         <tbody></tbody>
       </table>
     </div>
+    <div class="totals" id="totals"></div>
   </section>
 
   <section class="card io" id="io">
@@ -310,6 +350,28 @@ dialog.acct .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     <div class="sub" id="acctSync" style="margin-top:6px"></div>
     <div class="err" id="acctErr"></div>
     <div class="row"><button id="logoutBtn" type="button">Odjavi se</button><button class="primary" type="button" onclick="document.getElementById('acctDlg').close()">Zatvori</button></div>
+  </div>
+</dialog>
+
+<dialog class="dlg" id="itemDlg" aria-labelledby="itemTitle">
+  <div class="dlgIn">
+    <h2 id="itemTitle">Nova stavka</h2>
+    <label class="fld"><span>Naziv stavke</span><input type="text" id="fName" autocomplete="off" maxlength="80" placeholder="npr. Mobitel"></label>
+    <div class="fld"><span>Kategorija</span><div class="catpick" id="fCat"></div></div>
+    <label class="fld"><span>Opis ili komentar</span><input type="text" id="fDesc" autocomplete="off" maxlength="200"></label>
+    <div class="fld-row">
+      <label class="fld"><span>Period</span><select id="fPeriod"><option value="m">mjesečno</option><option value="y">godišnje</option></select></label>
+      <label class="fld"><span>Iznos (€)</span><input type="number" id="fAmount" inputmode="decimal" step="0.01" min="0" placeholder="0,00"></label>
+    </div>
+    <div class="dlg-err" id="itemErr"></div>
+    <div class="dlg-actions"><button type="button" id="itemCancel">Odustani</button><button class="primary" type="button" id="itemSave">Dodaj na popis</button></div>
+  </div>
+</dialog>
+<dialog class="dlg" id="delDlg" aria-labelledby="delTitle">
+  <div class="dlgIn">
+    <h2 id="delTitle">Obrisati stavku?</h2>
+    <p id="delName"></p>
+    <div class="dlg-actions"><button type="button" id="delNo">Odustani</button><button class="danger" type="button" id="delYes">Obriši</button></div>
   </div>
 </dialog>
 <div class="toast" id="toast"></div>
@@ -474,20 +536,26 @@ function renderTable(){
     <td style="min-width:120px"><select data-k="period"><option value="m" ${i.period!=="y"?'selected':''}>mjesečno</option><option value="y" ${i.period==="y"?'selected':''}>godišnje</option></select></td>
     <td class="r" style="min-width:100px"><input type="number" step="1" min="0" data-k="amount" value="${i.amount}"></td>
     <td class="r num" style="min-width:100px;font-weight:600">${fmt(monthly(i))} €</td>
-    <td><button class="x" data-del="${i.id}" title="Obriši">×</button></td></tr>`).join("")||`<tr><td colspan="7" class="empty">Nema stavki za ovaj filter.</td></tr>`;
-  const sub=rows.reduce((a,i)=>a+monthly(i),0);
-  tb.innerHTML+=`<tr class="total"><td colspan="5">Prikazano ${rows.length} od ${S.items.length} · mjesečno</td><td class="r num">${fmt(sub)} €</td><td></td></tr>
-    <tr class="total"><td colspan="5">Neraspoređeno od plaće</td><td class="r num free">${fmt(free())} €</td><td></td></tr>`;
+    <td><button class="icon-btn" data-del="${i.id}" title="Obriši" aria-label="Obriši stavku"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg></button></td></tr>`).join("")||`<tr><td colspan="7" class="empty">Nema stavki za ovaj filter.</td></tr>`;
+  renderTotals(rows);
+}
+function renderTotals(rows){
+  rows=rows||visible();const sub=rows.reduce((a,i)=>a+monthly(i),0);const y=rows.filter(i=>i.period==="y");const f=free();
+  const all=rows.length===S.items.length;
+  document.getElementById("totals").innerHTML=`<div class="tot-main"><b>Ukupno</b><small>${all?'Sve stavke':'Prikazano '+rows.length+' od '+S.items.length}, ${rows.length} ${rows.length===1?'stavka':'stavki'}</small>${y.length?`<small>Godišnje stavke: ${y.length}, ${fmt(y.reduce((a,i)=>a+(+i.amount||0),0))} € godišnje</small>`:''}</div>
+    <div class="tot-box"><span class="tot-label">Mjesečno</span><span class="tot-val num">${fmt(sub)} €</span></div>
+    <div class="tot-box"><span class="tot-label">Godišnje</span><span class="tot-val num">${fmt(sub*12)} €</span></div>
+    <div class="tot-box free ${f<0?'neg':''}"><span class="tot-label">Neraspoređeno</span><span class="tot-val num">${fmt(f)} €</span></div>`;
 }
 function refreshTable(){S.items.forEach(i=>{const tr=document.querySelector(`#tbl tr[data-id="${i.id}"]`);if(!tr)return;const a=tr.querySelector('[data-k="amount"]');if(document.activeElement!==a)a.value=i.amount;tr.children[5].textContent=fmt(monthly(i))+" €"});
-  const rows=visible();const t=document.querySelectorAll("#tbl tr.total .num");if(t[0])t[0].textContent=fmt(rows.reduce((a,i)=>a+monthly(i),0))+" €";if(t[1])t[1].textContent=fmt(free())+" €"}
+  renderTotals()}
 
 document.getElementById("chips").addEventListener("click",e=>{
   const d=e.target.closest("[data-gdel]");if(d){const id=d.dataset.gdel;if(!S.items.some(i=>i.group===id)){S.groups=S.groups.filter(g=>g.id!==id);if(tab===id)tab="all";render();toast("Kategorija obrisana")}return}
   const b=e.target.closest("[data-chip]");if(!b)return;if(b.dataset.chip==="__add"){addingGroup=true;renderChips();return}tab=b.dataset.chip;renderChips();renderTable()});
 document.getElementById("q").addEventListener("input",e=>{q=e.target.value;renderTable()});
 document.getElementById("sortSel").addEventListener("change",e=>{const v=e.target.value;if(v==="monthly"){sortKey="monthly";sortDir=-1}else if(v==="monthly-asc"){sortKey="monthly";sortDir=1}else{sortKey=v;sortDir=1}renderTable()});
-document.getElementById("addItem2").addEventListener("click",()=>document.getElementById("addItem").click());
+document.getElementById("addItem2").addEventListener("click",openItemDlg);
 document.querySelector("#tbl thead").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(!th)return;if(sortKey===th.dataset.s)sortDir*=-1;else{sortKey=th.dataset.s;sortDir=1}renderTable()});
 document.getElementById("tbl").addEventListener("input",e=>{
   const tr=e.target.closest("tr[data-id]");if(!tr)return;const it=S.items.find(x=>x.id===+tr.dataset.id);const k=e.target.dataset.k;if(!it||!k)return;
@@ -496,10 +564,24 @@ document.getElementById("tbl").addEventListener("input",e=>{
   else if(k==="period"){it.period=e.target.value;syncSlider(it.group);renderTabs()}
   else it[k]=e.target.value;
   updPctTotal();refreshTable();renderTiles();renderDonut();renderSplit();save()});
-document.getElementById("tbl").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;S.items=S.items.filter(i=>i.id!==+b.dataset.del);render();toast("Stavka obrisana")});
-document.getElementById("addItem").addEventListener("click",()=>{const g=S.groups.some(g=>g.id===tab)?tab:S.groups[S.groups.length-1].id;S.items.push({id:nid(),name:"",desc:"",group:g,period:"m",amount:0});
-  document.body.dataset.view="list";document.querySelectorAll(".mtabs button").forEach(b=>b.classList.toggle("on",b.dataset.v==="list"));sortKey="group";sortDir=1;render();
-  const last=[...document.querySelectorAll('#tbl tr[data-id]')].find(r=>r.querySelector(".name").value==="");last?.querySelector(".name").focus();last?.scrollIntoView({block:"center",behavior:"smooth"})});
+let delId=null;
+document.getElementById("tbl").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;delId=+b.dataset.del;const it=S.items.find(i=>i.id===delId);document.getElementById("delName").textContent=(it?.name||"(bez naziva)")+" · "+fmt(monthly(it||{}))+" € mjesečno";document.getElementById("delDlg").showModal()});
+document.getElementById("delNo").addEventListener("click",()=>document.getElementById("delDlg").close());
+document.getElementById("delYes").addEventListener("click",()=>{S.items=S.items.filter(i=>i.id!==delId);document.getElementById("delDlg").close();render();toast("Stavka obrisana")});
+function openItemDlg(){const g=S.groups.some(x=>x.id===tab)?tab:S.groups[0].id;
+  document.getElementById("fCat").innerHTML=S.groups.map(x=>`<label><input type="radio" name="fCat" value="${x.id}" ${x.id===g?'checked':''}><span>${gIcon(x)}${esc(x.name)}</span></label>`).join("");
+  for(const id of ["fName","fDesc","fAmount"])document.getElementById(id).value="";document.getElementById("fPeriod").value="m";document.getElementById("itemErr").textContent="";
+  document.getElementById("itemDlg").showModal();document.getElementById("fName").focus()}
+function saveItemDlg(){const name=document.getElementById("fName").value.trim();const amount=+document.getElementById("fAmount").value||0;const err=document.getElementById("itemErr");
+  if(!name){err.textContent="Upiši naziv stavke.";document.getElementById("fName").focus();return}
+  const g=document.querySelector('input[name="fCat"]:checked')?.value||S.groups[0].id;
+  S.items.push({id:nid(),name,desc:document.getElementById("fDesc").value.trim(),group:g,period:document.getElementById("fPeriod").value,amount});
+  document.getElementById("itemDlg").close();render();toast("Stavka dodana")}
+document.getElementById("addItem").addEventListener("click",openItemDlg);
+document.getElementById("itemCancel").addEventListener("click",()=>document.getElementById("itemDlg").close());
+document.getElementById("itemSave").addEventListener("click",saveItemDlg);
+document.getElementById("itemDlg").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();saveItemDlg()}});
+for(const d of ["itemDlg","delDlg"])document.getElementById(d).addEventListener("click",e=>{if(e.target.id===d)e.target.close()});
 
 /* ---------- excel ---------- */
 document.getElementById("btnXlsx").addEventListener("click",async()=>{
