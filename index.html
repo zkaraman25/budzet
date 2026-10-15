@@ -231,7 +231,6 @@ dialog.acct .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="chip" id="statusBtn" type="button" data-state="local"><span class="dot"></span><span id="statusText">Prijava</span></button>
       <button class="icon" id="btnTheme" title="Dnevni / noćni mod"><svg class="i" id="iconTheme" viewBox="0 0 24 24"></svg></button>
-      <button class="icon hideMob" id="btnIO" title="Sigurnosna kopija"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></button>
       <button class="primary hideDesk" id="addItem2"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Dodaj stavku</button>
     </div>
   </header>
@@ -515,7 +514,7 @@ document.getElementById("btnXlsx").addEventListener("click",async()=>{
 /* ---------- misc ---------- */
 document.querySelector(".mtabs").addEventListener("click",e=>{const b=e.target.closest("[data-v]");if(!b)return;document.body.dataset.view=b.dataset.v;document.querySelectorAll(".mtabs button").forEach(x=>x.classList.toggle("on",x===b));window.scrollTo({top:0,behavior:"smooth"})});
 document.body.dataset.view="dash";
-document.getElementById("btnIO").addEventListener("click",()=>{const io=document.getElementById("io");io.classList.toggle("open");document.getElementById("ioText").value=JSON.stringify(S,null,1);if(io.classList.contains("open"))io.scrollIntoView({behavior:"smooth"})});
+
 document.getElementById("ioCopy").addEventListener("click",()=>{const t=document.getElementById("ioText");t.value=JSON.stringify(S,null,1);navigator.clipboard?.writeText(t.value).then(()=>toast("Kopirano")).catch(()=>{t.select();toast("Označeno, kopiraj ručno")})});
 document.getElementById("ioLoad").addEventListener("click",()=>{try{const o=JSON.parse(document.getElementById("ioText").value);if(!o.items||!o.groups)throw 0;S=o;render();toast("Učitano")}catch(e){toast("Neispravan tekst")}});
 document.getElementById("btnReset").addEventListener("click",()=>{const b=document.getElementById("btnReset");if(b.dataset.arm){S=JSON.parse(JSON.stringify(DEFAULT));delete b.dataset.arm;b.textContent="Vrati zadano";sel=null;tab="all";render();toast("Vraćeno na početno")}else{b.dataset.arm="1";b.textContent="Sigurno? Klikni opet";setTimeout(()=>{delete b.dataset.arm;b.textContent="Vrati zadano"},3000)}});
