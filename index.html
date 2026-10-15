@@ -101,6 +101,9 @@ svg .ax{fill:var(--muted);font-size:11px}
 .legend b{font-weight:600;font-size:14px}
 .legend .num{color:var(--fg);font-weight:500;font-size:14px}
 .sw{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:9px;vertical-align:-1px;flex:none}
+.gt{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;color:#fff;margin-right:9px;vertical-align:middle;flex:none}
+.gt svg.i{width:14px;height:14px;stroke-width:2.2}
+.legend div > span:first-child{display:inline-flex;align-items:center}
 
 /* sliders */
 .sliders{display:grid;gap:10px;margin-top:12px}
@@ -474,10 +477,10 @@ function renderDonut(){
   document.getElementById("donut").innerHTML=`<svg viewBox="0 0 230 230" width="250">${paths}
     <text x="${cx}" y="${cy-16}" text-anchor="middle" class="ax">${esc(c[0])}</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="22" font-weight="800">${c[1]}</text><text x="${cx}" y="${cy+28}" text-anchor="middle" class="ax">${c[2]}</text></svg>`;
   const items=m&&m.id!=="__free"?S.items.filter(i=>i.group===m.id):null;
-  document.getElementById("legend").innerHTML=items?`<div data-g="${m.id}" class="on" style="animation-delay:0ms"><span><span class="sw" style="background:${m.c}"></span><b>${esc(m.n)}</b></span><span class="num">${fmt(m.v)} €</span></div>`+
+  document.getElementById("legend").innerHTML=items?`<div data-g="${m.id}" class="on" style="animation-delay:0ms"><span>${m.id==="__free"?`<span class="gt" style="background:var(--line)"></span>`:gTile(S.groups.find(g=>g.id===m.id))}<b>${esc(m.n)}</b></span><span class="num">${fmt(m.v)} €</span></div>`+
       items.map((i,k)=>`<div style="padding-left:30px;cursor:default;animation-delay:${(k+1)*40}ms"><span>${esc(i.name)}</span><span class="num" style="color:var(--muted)">${fmt(monthly(i))} €</span></div>`).join("")+
       `<div data-g="${m.id}" style="color:var(--a-strong);font-size:13px;animation-delay:${(items.length+1)*40}ms"><span>← natrag na sve kategorije</span></div>`
-    :parts.map((x,k)=>`<div data-g="${x.id}" style="animation-delay:${k*35}ms"><span><span class="sw" style="background:${x.c}"></span><b>${esc(x.n)}</b></span><span class="num">${fmt(x.v)} € <span style="color:var(--muted);font-size:12px">${Math.round(x.v/tot*100)}%</span></span></div>`).join("");
+    :parts.map((x,k)=>`<div data-g="${x.id}" style="animation-delay:${k*35}ms"><span>${x.id==="__free"?`<span class="gt" style="background:var(--line)"></span>`:gTile(S.groups.find(g=>g.id===x.id))}<b>${esc(x.n)}</b></span><span class="num">${fmt(x.v)} € <span style="color:var(--muted);font-size:12px">${Math.round(x.v/tot*100)}%</span></span></div>`).join("");
 }
 function renderSplit(){
   const kind=n=>/šted|sted|etf|dionic|invest/i.test(n)?"s":/bank|auto|pretpl|režij|rezij|stan|osigur|kredit/i.test(n)?"f":"v";
@@ -494,7 +497,7 @@ document.getElementById("legend").addEventListener("click",e=>{const s=e.target.
 /* ---------- sliders per category ---------- */
 function renderSliders(){
   document.getElementById("sliders").innerHTML=S.groups.map((g,k)=>{const v=gSum(g.id),p=pc(v),n=S.items.filter(i=>i.group===g.id).length;
-    return `<div class="sl" style="animation-delay:${k*50}ms" data-g="${g.id}"><span class="g"><span><span class="sw" style="background:${gColor(g.id)}"></span>${esc(g.name)} <span class="n">· ${n} ${n===1?'stavka':'stavki'}</span></span><span class="right"><span class="num amt">${p.toFixed(1)} %</span><span class="pin"><input type="number" min="0" step="1" value="${Math.round(v)}" data-sn="${g.id}" id="sn-${g.id}" ${n?'':'disabled'}><span>€</span></span></span></span>
+    return `<div class="sl" style="animation-delay:${k*50}ms" data-g="${g.id}"><span class="g"><span style="display:inline-flex;align-items:center">${gTile(g)}${esc(g.name)}&nbsp;<span class="n">· ${n} ${n===1?'stavka':'stavki'}</span></span><span class="right"><span class="num amt">${p.toFixed(1)} %</span><span class="pin"><input type="number" min="0" step="1" value="${Math.round(v)}" data-sn="${g.id}" id="sn-${g.id}" ${n?'':'disabled'}><span>€</span></span></span></span>
     <input type="range" min="0" max="${Math.max(S.income,1)}" step="1" value="${Math.round(v)}" data-sl="${g.id}" id="sl-${g.id}" ${n?'':'disabled'}></div>`}).join("");
   updPctTotal();
 }
@@ -521,6 +524,7 @@ function renderTabs(){const y=S.items.filter(i=>i.period==="y").length;
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-per]");if(!b)return;per=b.dataset.per;renderTabs();renderTable()});
 const GICONS=[[/bank|kredit/i,'<path d="M3 10h18L12 4zM5 10v8m4-8v8m6-8v8m4-8v8M3 20h18"/>'],[/auto|car/i,'<path d="M5 13 7 7h10l2 6M3 13h18v5h-2m-14 0H3v-5"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>'],[/pretpl|internet|telef/i,'<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/>'],[/šted|sted|etf|dionic/i,'<path d="M5 11a6 6 0 0 1 12-1h2l2 2-2 2v2a3 3 0 0 1-3 3h-1l-1 2h-2l-1-2H9l-1 2H6l-1-2-2-1v-5l2-1z"/>'],[/luks|izlas|putov/i,'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],[/živ|ziv|hran|stan|režij/i,'<path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],[/osigur/i,'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>']];
 function gIcon(g){const m=GICONS.find(([r])=>r.test(g.name));return m?`<svg class="i" viewBox="0 0 24 24" style="color:${gColor(g.id)}">${m[1]}</svg>`:`<span class="sw" style="background:${gColor(g.id)};margin:0"></span>`}
+function gTile(g){const m=GICONS.find(([r])=>r.test(g.name));return `<span class="gt" style="background:${gColor(g.id)}">${m?`<svg class="i" viewBox="0 0 24 24">${m[1]}</svg>`:''}</span>`}
 function renderChips(){const el=document.getElementById("chips");
   el.innerHTML=`<button data-chip="all" class="${tab==='all'?'on':''}"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Sve<span>${S.items.length}</span></button>`+
     S.groups.map(g=>{const c=S.items.filter(i=>i.group===g.id).length;return `<button data-chip="${g.id}" class="${tab===g.id?'on':''}">${gIcon(g)}${esc(g.name)}<span>${c}</span>${c===0&&S.groups.length>1?` <b data-gdel="${g.id}" title="Obriši kategoriju" style="margin-left:4px;opacity:.6">×</b>`:''}</button>`}).join("")+
