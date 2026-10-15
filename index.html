@@ -241,6 +241,10 @@ dialog.dlg::backdrop{background:rgba(15,15,22,.5)}
 .catpick svg.i{width:15px;height:15px}
 .catpick input:checked + span{background:var(--a-soft);border-color:var(--a);color:var(--a-strong);font-weight:600}
 .dlg-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.colors{display:flex;gap:8px;flex-wrap:wrap}
+.colors button{width:30px;height:30px;padding:0;border-radius:50%;border:3px solid transparent}
+.colors button.on{border-color:var(--fg)}
+.catpick.icons span{padding:6px 9px}
 .dlg-err{color:var(--warn);font-size:13px;min-height:1.2em;margin-top:10px}
 button.danger{background:var(--warn);border-color:var(--warn);color:#fff}
 .icon-btn{width:28px;height:28px;padding:0;display:inline-grid;place-items:center;border:0;border-radius:7px;background:transparent;color:var(--muted);flex:none}
@@ -370,6 +374,17 @@ button.danger{background:var(--warn);border-color:var(--warn);color:#fff}
     <div class="dlg-actions"><button type="button" id="itemCancel">Odustani</button><button class="primary" type="button" id="itemSave">Dodaj na popis</button></div>
   </div>
 </dialog>
+
+<dialog class="dlg" id="catDlg" aria-labelledby="catTitle">
+  <div class="dlgIn">
+    <h2 id="catTitle">Nova kategorija</h2>
+    <label class="fld"><span>Naziv</span><input type="text" id="cName" autocomplete="off" maxlength="40" placeholder="npr. Kućni ljubimac"></label>
+    <div class="fld"><span>Ikona</span><div class="catpick" id="cIco"></div></div>
+    <div class="fld"><span>Boja</span><div class="colors" id="cCol"></div></div>
+    <div class="dlg-err" id="catErr"></div>
+    <div class="dlg-actions"><button type="button" id="catCancel">Odustani</button><button class="primary" type="button" id="catSave">Dodaj kategoriju</button></div>
+  </div>
+</dialog>
 <dialog class="dlg" id="delDlg" aria-labelledby="delTitle">
   <div class="dlgIn">
     <h2 id="delTitle">Obrisati stavku?</h2>
@@ -424,7 +439,7 @@ function planned(){return S.items.reduce((a,i)=>a+monthly(i),0)}
 function free(){return S.income-planned()}
 function gSum(g){return S.items.filter(i=>i.group===g).reduce((a,i)=>a+monthly(i),0)}
 function gName(id){return (S.groups.find(g=>g.id===id)||{}).name||"?"}
-function gColor(gid){const i=Math.max(S.groups.findIndex(g=>g.id===gid),0);return `var(--c${(i%8)+1})`}
+function gColor(gid){const i=Math.max(S.groups.findIndex(g=>g.id===gid),0);const g=S.groups[i];return `var(--${g&&g.color?g.color:"c"+((i%8)+1)})`}
 function pc(v){return S.income?v/S.income*100:0}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
 
@@ -523,13 +538,14 @@ function renderTabs(){const y=S.items.filter(i=>i.period==="y").length;
   document.getElementById("tabs").innerHTML=[["all","Sve",S.items.length],["m","Mjesečno",S.items.length-y],["y","Godišnje",y]].map(([k,l,c])=>`<button data-per="${k}" class="${per===k?'on':''}">${l}<span>${c}</span></button>`).join("")}
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-per]");if(!b)return;per=b.dataset.per;renderTabs();renderTable()});
 const GICONS=[[/bank|kredit/i,'<path d="M3 10h18L12 4zM5 10v8m4-8v8m6-8v8m4-8v8M3 20h18"/>'],[/auto|car/i,'<path d="M5 13 7 7h10l2 6M3 13h18v5h-2m-14 0H3v-5"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>'],[/pretpl|internet|telef/i,'<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/>'],[/šted|sted|etf|dionic/i,'<path d="M5 11a6 6 0 0 1 12-1h2l2 2-2 2v2a3 3 0 0 1-3 3h-1l-1 2h-2l-1-2H9l-1 2H6l-1-2-2-1v-5l2-1z"/>'],[/luks|izlas|putov/i,'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],[/živ|ziv|hran|stan|režij/i,'<path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],[/osigur/i,'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>']];
-function gIcon(g){const m=GICONS.find(([r])=>r.test(g.name));return m?`<svg class="i" viewBox="0 0 24 24" style="color:${gColor(g.id)}">${m[1]}</svg>`:`<span class="sw" style="background:${gColor(g.id)};margin:0"></span>`}
-function gTile(g){const m=GICONS.find(([r])=>r.test(g.name));return `<span class="gt" style="background:${gColor(g.id)}">${m?`<svg class="i" viewBox="0 0 24 24">${m[1]}</svg>`:''}</span>`}
+const ICONSET={bank:'<path d="M3 10h18L12 4zM5 10v8m4-8v8m6-8v8m4-8v8M3 20h18"/>',car:'<path d="M5 13 7 7h10l2 6M3 13h18v5h-2m-14 0H3v-5"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>',screen:'<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/>',pig:'<path d="M5 11a6 6 0 0 1 12-1h2l2 2-2 2v2a3 3 0 0 1-3 3h-1l-1 2h-2l-1-2H9l-1 2H6l-1-2-2-1v-5l2-1z"/>',star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',home:'<path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',cart:'<path d="M3 4h2l2.5 11h11L21 7H6.5"/><circle cx="9" cy="19" r="1.3"/><circle cx="17" cy="19" r="1.3"/>',food:'<path d="M5 3v8a3 3 0 0 0 3 3v7M11 3v8a3 3 0 0 1-3 3M17 3c-2 0-3 3-3 6v3h3v9"/>',heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',gift:'<rect x="3" y="9" width="18" height="12" rx="2"/><path d="M12 9v12M3 13h18M12 9c-2-4-6-4-6-1s4 1 6 1zm0 0c2-4 6-4 6-1s-4 1-6 1z"/>',plane:'<path d="M2 14l8-2 4-8 2 1-2 7 7 2v2l-7-1-3 6-2 1 1-6-8-1z"/>',phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',tool:'<path d="M14.5 5.5a4 4 0 0 0 5 5L9 21l-2.5-2.5L17 8"/><path d="m3 7 4-4"/>',book:'<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zm16 0h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',music:'<path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',dog:'<path d="M4 10c0-3 2-5 5-5h2l3 3h3l3 3v3a4 4 0 0 1-4 4h-1v3h-2v-3H9v3H7v-5a5 5 0 0 1-3-5z"/>'};
+function gPath(g){if(g.icon&&ICONSET[g.icon])return ICONSET[g.icon];const m=GICONS.find(([r])=>r.test(g.name));return m?m[1]:null}
+function gIcon(g){const d=gPath(g);return d?`<svg class="i" viewBox="0 0 24 24" style="color:${gColor(g.id)}">${d}</svg>`:`<span class="sw" style="background:${gColor(g.id)};margin:0"></span>`}
+function gTile(g){const d=gPath(g);return `<span class="gt" style="background:${gColor(g.id)}">${d?`<svg class="i" viewBox="0 0 24 24">${d}</svg>`:''}</span>`}
 function renderChips(){const el=document.getElementById("chips");
   el.innerHTML=`<button data-chip="all" class="${tab==='all'?'on':''}"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Sve<span>${S.items.length}</span></button>`+
     S.groups.map(g=>{const c=S.items.filter(i=>i.group===g.id).length;return `<button data-chip="${g.id}" class="${tab===g.id?'on':''}">${gIcon(g)}${esc(g.name)}<span>${c}</span>${c===0&&S.groups.length>1?` <b data-gdel="${g.id}" title="Obriši kategoriju" style="margin-left:4px;opacity:.6">×</b>`:''}</button>`}).join("")+
-    (addingGroup?`<input id="newGroup" placeholder="Naziv kategorije, Enter" autocomplete="off">`:`<button class="add" data-chip="__add">+ Kategorija</button>`);
-  if(addingGroup){const i=document.getElementById("newGroup");i.focus();i.addEventListener("keydown",e=>{if(e.key==="Enter"){const v=i.value.trim();if(v){S.groups.push({id:"g"+nid(),name:v});toast("Kategorija dodana")}addingGroup=false;render()}if(e.key==="Escape"){addingGroup=false;renderChips()}});i.addEventListener("blur",()=>{if(addingGroup){addingGroup=false;renderChips()}})}}
+    `<button class="add" data-chip="__add"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Kategorija</button>`;}
 function renderTable(){
   const tb=document.querySelector("#tbl tbody");const rows=visible();
   document.querySelectorAll("#tbl th[data-s]").forEach(th=>{th.classList.toggle("on",th.dataset.s===sortKey);th.querySelector(".sort").textContent=th.dataset.s===sortKey?(sortDir>0?"↑":"↓"):"↕"});
@@ -556,7 +572,7 @@ function refreshTable(){S.items.forEach(i=>{const tr=document.querySelector(`#tb
 
 document.getElementById("chips").addEventListener("click",e=>{
   const d=e.target.closest("[data-gdel]");if(d){const id=d.dataset.gdel;if(!S.items.some(i=>i.group===id)){S.groups=S.groups.filter(g=>g.id!==id);if(tab===id)tab="all";render();toast("Kategorija obrisana")}return}
-  const b=e.target.closest("[data-chip]");if(!b)return;if(b.dataset.chip==="__add"){addingGroup=true;renderChips();return}tab=b.dataset.chip;renderChips();renderTable()});
+  const b=e.target.closest("[data-chip]");if(!b)return;if(b.dataset.chip==="__add"){openCatDlg();return}tab=b.dataset.chip;renderChips();renderTable()});
 document.getElementById("q").addEventListener("input",e=>{q=e.target.value;renderTable()});
 document.getElementById("sortSel").addEventListener("change",e=>{const v=e.target.value;if(v==="monthly"){sortKey="monthly";sortDir=-1}else if(v==="monthly-asc"){sortKey="monthly";sortDir=1}else{sortKey=v;sortDir=1}renderTable()});
 document.getElementById("addItem2").addEventListener("click",openItemDlg);
@@ -604,6 +620,20 @@ document.body.dataset.view="dash";
 document.getElementById("ioCopy").addEventListener("click",()=>{const t=document.getElementById("ioText");t.value=JSON.stringify(S,null,1);navigator.clipboard?.writeText(t.value).then(()=>toast("Kopirano")).catch(()=>{t.select();toast("Označeno, kopiraj ručno")})});
 document.getElementById("ioLoad").addEventListener("click",()=>{try{const o=JSON.parse(document.getElementById("ioText").value);if(!o.items||!o.groups)throw 0;S=o;render();toast("Učitano")}catch(e){toast("Neispravan tekst")}});
 document.getElementById("btnReset").addEventListener("click",()=>{const b=document.getElementById("btnReset");if(b.dataset.arm){S=JSON.parse(JSON.stringify(DEFAULT));delete b.dataset.arm;b.textContent="Vrati zadano";sel=null;tab="all";render();toast("Vraćeno na početno")}else{b.dataset.arm="1";b.textContent="Sigurno? Klikni opet";setTimeout(()=>{delete b.dataset.arm;b.textContent="Vrati zadano"},3000)}});
+
+let pickIco="home",pickCol="c1";
+function openCatDlg(){document.getElementById("cName").value="";document.getElementById("catErr").textContent="";pickIco="home";pickCol="c"+((S.groups.length%8)+1);
+  document.getElementById("cIco").className="catpick icons";
+  document.getElementById("cIco").innerHTML=Object.keys(ICONSET).map(k=>`<label><input type="radio" name="cIco" value="${k}" ${k===pickIco?'checked':''}><span><svg class="i" viewBox="0 0 24 24">${ICONSET[k]}</svg></span></label>`).join("");
+  document.getElementById("cCol").innerHTML=["c1","c2","c3","c4","c5","c6","c7","c8"].map(c=>`<button type="button" data-c="${c}" class="${c===pickCol?'on':''}" style="background:var(--${c})" title="${c}"></button>`).join("");
+  document.getElementById("catDlg").showModal();document.getElementById("cName").focus()}
+document.getElementById("cCol").addEventListener("click",e=>{const b=e.target.closest("[data-c]");if(!b)return;pickCol=b.dataset.c;document.querySelectorAll("#cCol button").forEach(x=>x.classList.toggle("on",x===b))});
+function saveCat(){const name=document.getElementById("cName").value.trim();if(!name){document.getElementById("catErr").textContent="Upiši naziv kategorije.";return}
+  const icon=document.querySelector('input[name="cIco"]:checked')?.value||"home";S.groups.push({id:"g"+nid(),name,icon,color:pickCol});document.getElementById("catDlg").close();render();toast("Kategorija dodana")}
+document.getElementById("catSave").addEventListener("click",saveCat);
+document.getElementById("catCancel").addEventListener("click",()=>document.getElementById("catDlg").close());
+document.getElementById("catDlg").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.tagName==="INPUT"){e.preventDefault();saveCat()}});
+document.getElementById("catDlg").addEventListener("click",e=>{if(e.target.id==="catDlg")e.target.close()});
 
 render();
 /* ---------- Zajednički račun s Aparatima (GitHub sinkronizacija) ----------
