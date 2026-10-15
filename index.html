@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2e8b5a">
+<title>Kućni budžet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: header → 4 joined tiles → donut (left) + sliders (right) → list. Monochrome green, two themes, mobile tabs. */
+:root{
+  --bg:#f3f7f4; --card:#ffffff; --fg:#111a15; --muted:#687569; --line:#e2eae5; --hover:#eef5f0;
+  --a:#2e8b5a; --a-strong:#23714a; --a-soft:#dff0e6; --a-pale:#c3e3d1; --a-faint:#edf6f0; --on-a:#ffffff;
+  --warn:#b4532a; --c1:#2e8b5a; --c2:#3b7dd8; --c3:#d9862b; --c4:#8a6fd1; --c5:#d1486f; --c6:#1fa3a3; --c7:#b5a020; --c8:#6b7a8f;
+  --sh:0 1px 2px rgba(17,26,21,.04),0 8px 24px -16px rgba(17,26,21,.18);
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#0e1411; --card:#161e19; --fg:#e8efea; --muted:#95a39a; --line:#243029; --hover:#1c2620;
+  --a:#4cc287; --a-strong:#6fd39f; --a-soft:#1b3427; --a-pale:#285a40; --a-faint:#17261e; --on-a:#0b1a12;
+  --warn:#ec9a6e; --c1:#4cc287; --c2:#6ea4f0; --c3:#f0a44f; --c4:#aa96ee; --c5:#ec7596; --c6:#4fc7c7; --c7:#d6c23f; --c8:#93a3b8; --sh:0 1px 2px rgba(0,0,0,.3),0 8px 24px -16px rgba(0,0,0,.6);
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0e1411; --card:#161e19; --fg:#e8efea; --muted:#95a39a; --line:#243029; --hover:#1c2620;
+  --a:#4cc287; --a-strong:#6fd39f; --a-soft:#1b3427; --a-pale:#285a40; --a-faint:#17261e; --on-a:#0b1a12;
+  --warn:#ec9a6e; --c1:#4cc287; --c2:#6ea4f0; --c3:#f0a44f; --c4:#aa96ee; --c5:#ec7596; --c6:#4fc7c7; --c7:#d6c23f; --c8:#93a3b8; --sh:0 1px 2px rgba(0,0,0,.3),0 8px 24px -16px rgba(0,0,0,.6);
+  color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 96px;
+  transition:background .25s,color .25s}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;border-radius:10px;background:var(--a);color:var(--on-a);display:grid;place-items:center;flex:none}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.02em}
+h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0;box-shadow:var(--sh)}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--a)}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 13px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s,transform .1s}
+button:hover{border-color:var(--a-pale);background:var(--hover)}
+button:active{transform:translateY(1px)}
+button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+button.primary{background:var(--a);color:var(--on-a);border-color:var(--a)}
+button.primary:hover{background:var(--a-strong);border-color:var(--a-strong)}
+button.x{border:none;background:none;color:var(--muted);padding:2px 7px;font-size:17px;line-height:1}
+button.x:hover{color:var(--warn);background:none}
+button.icon{padding:8px 10px}
+svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);overflow:hidden}
+.tile{padding:18px 20px;display:grid;gap:10px;border-right:1px solid var(--line);min-width:0;align-content:start}
+.tile:last-child{border-right:none}
+.tile .h{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--fg)}
+.tile .ic{width:30px;height:30px;border-radius:8px;background:var(--a);color:var(--on-a);display:grid;place-items:center;flex:none}
+.tile .ic svg.i{width:15px;height:15px}
+.tile .v{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.1;transition:color .3s}
+.tile .v.bump{animation:bump .4s ease}
+@keyframes bump{30%{transform:scale(1.06)}}
+.tile .s{color:var(--muted);font-size:13px}
+.tile.warn .v{color:var(--warn)}
+.edit{display:flex;align-items:center;gap:8px;border:1.5px solid var(--a-pale);background:var(--a-faint);border-radius:10px;padding:4px 10px 4px 12px;transition:border-color .15s,box-shadow .15s}
+.edit:focus-within{border-color:var(--a);box-shadow:0 0 0 3px var(--a-soft)}
+.edit input{font:inherit;font-size:28px;font-weight:800;letter-spacing:-.03em;width:100%;min-width:0;border:none;background:transparent;color:inherit;padding:0;-moz-appearance:textfield}
+.edit input::-webkit-inner-spin-button{appearance:none}
+.edit input:focus{outline:none}
+.edit .u{font-size:20px;font-weight:700;color:var(--muted)}
+.edit svg.i{color:var(--a);width:17px;height:17px}
+@media (max-width:860px){.tiles{grid-template-columns:1fr 1fr}.tile{border-bottom:1px solid var(--line)}.tile:nth-child(2n){border-right:none}.tile:nth-last-child(-n+2){border-bottom:none}}
+
+/* dashboard row */
+.charts{display:grid;grid-template-columns:1.05fr 1fr;gap:18px;align-items:stretch}
+.charts .card:first-child{display:flex;flex-direction:column}
+.charts .card:first-child .donutWrap{flex:1}
+@media (max-width:900px){.charts{grid-template-columns:1fr}}
+.donutWrap{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:center;margin-top:12px}
+.split{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:grid;gap:8px}
+.split .h{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-weight:600}
+.split .bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line)}
+.split .bar span{display:block;height:100%;transition:width .5s cubic-bezier(.3,.7,.3,1)}
+.split .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.split .lg span b{font-weight:700}
+@media (max-width:520px){.donutWrap{grid-template-columns:1fr;justify-items:center}}
+svg{display:block;max-width:100%;height:auto}
+svg text{font-family:var(--font);fill:var(--fg)}
+svg .ax{fill:var(--muted);font-size:11px}
+.seg{cursor:pointer;transition:opacity .25s,stroke-width .25s;stroke-dasharray:100;stroke-dashoffset:100;animation:draw .8s cubic-bezier(.3,.7,.3,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.seg.dim{opacity:.3}
+.legend{display:grid;gap:1px;min-width:0}
+.legend div{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;padding:9px 10px;border-radius:9px;transition:background .15s,transform .15s;animation:rowin .4s ease both}
+.legend div:hover,.legend div.on{background:var(--hover)}
+.legend b{font-weight:600;font-size:14px}
+.legend .num{color:var(--fg);font-weight:500;font-size:14px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:9px;vertical-align:-1px;flex:none}
+
+/* sliders */
+.sliders{display:grid;gap:10px;margin-top:12px}
+.sl{display:grid;gap:2px;animation:rowin .4s ease both}
+.sl .t{display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:8px}
+.sl .t b{font-weight:600}
+.sl .t .num{color:var(--muted)}
+.sl .t .val{font-weight:700;color:var(--a-strong);transition:color .2s}
+.sl input[type=range]{width:100%;accent-color:var(--a);margin:0;height:22px}
+.sl .g{font-size:12px;color:var(--fg);font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sl .g .n{color:var(--muted);font-weight:500}
+.sl .g .right{display:flex;align-items:center;gap:10px}
+.pctTot{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.sl .t{gap:12px}
+.pin{display:flex;align-items:center;gap:3px;border:1.5px solid var(--a-pale);background:var(--a-faint);border-radius:8px;padding:1px 7px;flex:none;color:var(--muted);font-weight:600;font-size:13px}
+.pin input{width:56px;border:none;background:transparent;font:inherit;font-weight:700;color:var(--a-strong);text-align:right;padding:2px 0;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.pin input::-webkit-inner-spin-button{appearance:none}
+.pin input:focus{outline:none}
+.pin:focus-within{border-color:var(--a)}
+.sl .g .amt{font-weight:600;color:var(--muted);font-size:12px}
+
+/* list */
+.listHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin-left:auto}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;background:var(--bg);height:40px;align-items:center}
+.tabs button{border:none;background:none;padding:6px 11px;border-radius:7px;font-weight:600;color:var(--muted);height:32px}
+.tabs button:hover{background:var(--hover)}
+.tabs button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.tabs button span{font-weight:500;margin-left:4px;opacity:.8}
+.tools > button{height:40px}
+.searchRow{display:flex;gap:10px;margin-top:14px}
+.search{position:relative;flex:0 1 420px;min-width:0}
+.search input{width:100%;height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px 0 38px;font:inherit;background:var(--card);color:inherit}
+.search input:focus{outline:none;border-color:var(--a)}
+.search svg.i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.sel{height:40px;border:1px solid var(--line);border-radius:10px;padding:0 12px;font:inherit;font-weight:600;background:var(--card);color:inherit;flex:none}
+.sel:focus{outline:none;border-color:var(--a)}
+@media (max-width:760px){.listHead > div:first-child{width:100%}.tools{margin-left:0;width:100%;justify-content:flex-start}.tools #addItem{display:none}.search{flex:1 1 auto}.sel{flex:1 1 40%}}
+@media (max-width:420px){.tabs button{padding:6px 8px;font-size:13px}}
+.chips{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:12px -18px 10px;padding:0 18px}
+.chips::-webkit-scrollbar{display:none}
+.chips button{white-space:nowrap;flex:none;gap:6px}
+.chips button svg.i{width:15px;height:15px;stroke-width:2}
+.chips button{padding:6px 12px;border-radius:9px;font-weight:600;font-size:13px}
+.chips button.on{background:var(--a-soft);border-color:var(--a-pale);color:var(--a-strong)}
+.chips button span{font-weight:500;opacity:.75;margin-left:3px}
+.chips .add{color:var(--a-strong);border-style:dashed}
+.chips input{border:1px solid var(--a);border-radius:9px;padding:6px 10px;font:inherit;font-size:13px;background:var(--card);color:inherit;width:160px}
+.tscroll{overflow-x:auto;margin:0 -18px;padding:0 18px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:13px;color:var(--muted);text-align:left;font-weight:600;padding:10px 8px;border-bottom:1px solid var(--line);background:var(--a-faint);white-space:nowrap;cursor:pointer;user-select:none}
+
+th.r,td.r{text-align:right}
+th .sort{opacity:.45;margin-left:4px;font-size:11px}
+th.on .sort{opacity:1;color:var(--a-strong)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td+td,th+th{border-left:1px solid var(--line)}
+.tscroll table{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:var(--hover)}
+tbody tr.in{animation:rowin .35s ease both}
+@keyframes rowin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+td input,td select{font:inherit;color:inherit;background:transparent;border:1px solid transparent;border-radius:7px;padding:6px 7px;width:100%;min-width:0;transition:border-color .15s,background .15s}
+td input:hover,td select:hover{border-color:var(--line)}
+td input:focus,td select:focus{outline:none;border-color:var(--a);background:var(--card)}
+td input[type=number]{text-align:right;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+td input[type=number]::-webkit-inner-spin-button{appearance:none}
+td input.name{font-weight:600}
+tr.total td{font-weight:700;border-bottom:none;background:var(--a-faint)}
+tr.total td.free{color:var(--a-strong)}
+.pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--a-soft);color:var(--a-strong);font-weight:600;white-space:nowrap}
+.empty{padding:22px 8px;color:var(--muted);text-align:center}
+
+/* mobile tabs */
+.mtabs{display:none;position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));gap:8px;z-index:5}
+.mtabs button{flex:1;justify-content:center;padding:12px;font-size:15px;border:none;background:none;color:var(--muted)}
+.mtabs button.on{background:var(--a-soft);color:var(--a-strong)}
+@media (max-width:760px){
+  .mtabs{display:flex}
+  body[data-view="dash"] #listCard{display:none}
+  body[data-view="list"] .tiles,body[data-view="list"] .charts{display:none}
+}
+.hideDesk{display:none}
+@media (max-width:760px){.hideMob{display:none!important}.hideDesk{display:inline-flex}}
+
+/* IO */
+.io{display:none;gap:8px}
+.io.open{display:grid}
+textarea{font:12px ui-monospace,Menlo,monospace;width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;background:transparent;color:inherit;padding:8px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);background:var(--fg);color:var(--bg);padding:9px 15px;border-radius:9px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:6}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.foot{color:var(--muted);font-size:12px;text-align:center}
+
+/* entrance */
+.card,.tiles,header{animation:cardin .5s ease both}
+.tiles{animation-delay:.05s}
+.charts .card:nth-child(1){animation-delay:.12s}
+.charts .card:nth-child(2){animation-delay:.18s}
+#listCard{animation-delay:.26s}
+@keyframes cardin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* račun */
+.chip{cursor:pointer}
+.chip[data-state="local"] .dot{background:var(--muted)}
+.chip[data-state="busy"] .dot{background:var(--c3);animation:pulse 1s infinite}
+.chip[data-state="error"] .dot,.chip[data-state="offline"] .dot{background:var(--warn)}
+@keyframes pulse{50%{opacity:.3}}
+dialog.acct{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);padding:22px;width:min(420px,calc(100vw - 32px));box-shadow:0 20px 60px -20px rgba(0,0,0,.4)}
+dialog.acct::backdrop{background:rgba(0,0,0,.35)}
+dialog.acct h2{margin:0 0 6px}
+dialog.acct label{display:grid;gap:5px;font-size:13px;color:var(--muted);font-weight:600;margin-top:12px}
+dialog.acct input{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 11px;width:100%}
+dialog.acct input:focus{outline:none;border-color:var(--a)}
+dialog.acct .err{color:var(--warn);font-size:13px;min-height:1.2em;margin-top:8px}
+dialog.acct .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <a href="/" title="Natrag na Hub" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);text-decoration:none;flex:none"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></a>
+      <div class="logo"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h3"/></svg></div>
+      <div><h1>Kućni budžet</h1></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="chip" id="statusBtn" type="button" data-state="local"><span class="dot"></span><span id="statusText">Prijava</span></button>
+      <button class="icon" id="btnTheme" title="Dnevni / noćni mod"><svg class="i" id="iconTheme" viewBox="0 0 24 24"></svg></button>
+      <button class="icon hideMob" id="btnIO" title="Sigurnosna kopija"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></button>
+      <button class="primary hideDesk" id="addItem2"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Dodaj stavku</button>
+    </div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="charts">
+    <section class="card">
+      <h2>Po kategoriji</h2>
+      <div class="sub">Klikni dio kruga ili kategoriju za detalje</div>
+      <div class="donutWrap"><div id="donut"></div><div class="legend" id="legend"></div></div>
+      <div class="split" id="split"></div>
+    </section>
+    <section class="card" id="slidersCard">
+      <h2>Postoci od plaće po kategoriji</h2>
+      <div class="sub">Pomakni slajder ili upiši postotak. Stavke u toj kategoriji se razmjerno povećaju ili smanje.</div>
+      <div class="sliders" id="sliders"></div>
+      <div class="pctTot"><span>Ukupno raspoređeno</span><b id="pctTotal" class="num"></b></div>
+    </section>
+  </div>
+
+  <section class="card" id="listCard">
+    <div class="listHead">
+      <div><h2>Sve stavke</h2><div class="sub">Klikni polje i tipkaj, sprema se samo</div></div>
+      <div class="tools">
+        <div class="tabs" id="tabs"></div>
+        <button id="btnXlsx"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>Izvezi u Excel</button>
+        <button class="primary" id="addItem"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Dodaj stavku</button>
+      </div>
+    </div>
+    <div class="searchRow">
+      <div class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Pretraži stavke"></div>
+      <select id="sortSel" class="sel hideDesk" title="Redoslijed"><option value="group">Po kategoriji</option><option value="name">Po nazivu</option><option value="monthly">Po iznosu, najveći</option><option value="monthly-asc">Po iznosu, najmanji</option><option value="period">Po periodu</option></select>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="tscroll">
+      <table id="tbl">
+        <thead><tr>
+          <th data-s="name">Stavka<span class="sort">↕</span></th>
+          <th data-s="desc">Opis<span class="sort">↕</span></th>
+          <th data-s="group">Kategorija<span class="sort">↕</span></th>
+          <th data-s="period">Period<span class="sort">↕</span></th>
+          <th class="r" data-s="amount">Iznos<span class="sort">↕</span></th>
+          <th class="r" data-s="monthly">Mjesečno<span class="sort">↕</span></th>
+          <th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card io" id="io">
+    <div class="sub">Kopiraj ovaj tekst negdje na sigurno. Za vraćanje zalijepi ga ovdje i klikni Učitaj.</div>
+    <textarea id="ioText" spellcheck="false"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="ioCopy">Kopiraj</button><button id="ioLoad">Učitaj iz teksta</button><button id="btnReset">Vrati zadano</button></div>
+  </section>
+
+  <div class="foot">Prijavljen: podaci se sinkroniziraju preko GitHuba. Neprijavljen: ostaju u ovom pregledniku.</div>
+</div>
+
+<nav class="mtabs">
+  <button data-v="dash" class="on"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</button>
+  <button data-v="list"><svg class="i" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Lista</button>
+</nav>
+
+<dialog class="acct" id="acctDlg">
+  <h2 id="acctTitle">Prijava</h2>
+  <div id="loginView">
+    <div class="sub">Isti račun kao u Aparatima. Podaci se sinkroniziraju između uređaja.</div>
+    <label>Korisničko ime<input id="lUser" type="text" autocomplete="username" autocapitalize="none"></label>
+    <label>Lozinka<input id="lPass" type="password" autocomplete="current-password"></label>
+    <div class="err" id="lErr"></div>
+    <div class="row"><button id="acctClose" type="button">Zatvori</button><button class="primary" id="loginBtn" type="button">Prijavi se</button></div>
+  </div>
+  <div id="acctView" hidden>
+    <div class="sub" id="acctWho"></div>
+    <div class="sub" id="acctSync" style="margin-top:6px"></div>
+    <div class="err" id="acctErr"></div>
+    <div class="row"><button id="logoutBtn" type="button">Odjavi se</button><button class="primary" type="button" onclick="document.getElementById('acctDlg').close()">Zatvori</button></div>
+  </div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- data ---------- */
+const DEFAULT={
+  income:2300,
+  groups:[{id:"g1",name:"Banka"},{id:"g2",name:"Auto"},{id:"g3",name:"Pretplate"},{id:"g4",name:"Život"},{id:"g5",name:"Luksuz"},{id:"g6",name:"Štednja"}],
+  items:[
+    {id:1,name:"Kredit (anuitet)",desc:"ZABA, 2,98 % fiksno, 15. u mjesecu",group:"g1",period:"m",amount:807},
+    {id:2,name:"Paket računa",desc:"",group:"g1",period:"m",amount:7},
+    {id:3,name:"Osiguranje stana od požara",desc:"obvezno uz kredit, vinkulirano",group:"g1",period:"y",amount:150},
+    {id:4,name:"Osiguranje od nezgode",desc:"obvezno uz kredit, vinkulirano",group:"g1",period:"y",amount:154},
+    {id:5,name:"Gorivo",desc:"",group:"g2",period:"m",amount:120},
+    {id:6,name:"Registracija i osiguranje auta",desc:"Škoda, bez kaska",group:"g2",period:"y",amount:600},
+    {id:7,name:"Servis",desc:"",group:"g2",period:"m",amount:30},
+    {id:8,name:"Multisport",desc:"",group:"g3",period:"m",amount:0},
+    {id:9,name:"Claude",desc:"",group:"g3",period:"m",amount:80},
+    {id:10,name:"Figma",desc:"",group:"g3",period:"m",amount:15},
+    {id:11,name:"Spotify",desc:"",group:"g3",period:"m",amount:10},
+    {id:12,name:"Internet doma",desc:"",group:"g3",period:"m",amount:25},
+    {id:13,name:"Mobitel",desc:"",group:"g3",period:"m",amount:12},
+    {id:14,name:"Režije + pričuva",desc:"dizalica topline, energetski stan",group:"g4",period:"m",amount:120},
+    {id:15,name:"Kućne potrepštine",desc:"",group:"g4",period:"m",amount:40},
+    {id:16,name:"Odjeća, frizer",desc:"",group:"g4",period:"m",amount:60},
+    {id:17,name:"Hrana",desc:"",group:"g5",period:"m",amount:300},
+    {id:18,name:"Izlasci i kava",desc:"",group:"g5",period:"m",amount:150},
+    {id:19,name:"Putovanja",desc:"",group:"g5",period:"y",amount:600},
+    {id:20,name:"Pokloni",desc:"",group:"g5",period:"m",amount:30},
+    {id:21,name:"Štednja",desc:"štedni račun, rezerva",group:"g6",period:"m",amount:200},
+    {id:22,name:"ETF",desc:"mjesečni plan",group:"g6",period:"m",amount:50},
+  ]
+};
+const KEY="kucni-budzet-v6";
+let S=load(), sel=null, tab="all", per="all", q="", sortKey="group", sortDir=1, addingGroup=false;
+const nid=()=>Date.now()+Math.floor(Math.random()*1000);
+function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.items&&o.groups)return o}}catch(e){}return JSON.parse(JSON.stringify(DEFAULT))}
+let _last=null;
+function markSaved(){_last=JSON.stringify({...S,updatedAt:0})}
+function save(){const snap=JSON.stringify({...S,updatedAt:0});if(_last!==null&&snap!==_last){S.updatedAt=Date.now();if(typeof scheduleSync==="function")scheduleSync(1500)}_last=snap;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const syncGet=()=>S, syncSet=o=>{S=o;markSaved();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+function fmt(n){return (Math.round(n*100)/100).toLocaleString("hr-HR",{minimumFractionDigits:0,maximumFractionDigits:2})}
+function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;")}
+function monthly(it){const a=+it.amount||0;return it.period==="y"?Math.round(a/12*100)/100:a}
+function planned(){return S.items.reduce((a,i)=>a+monthly(i),0)}
+function free(){return S.income-planned()}
+function gSum(g){return S.items.filter(i=>i.group===g).reduce((a,i)=>a+monthly(i),0)}
+function gName(id){return (S.groups.find(g=>g.id===id)||{}).name||"?"}
+function gColor(gid){const i=Math.max(S.groups.findIndex(g=>g.id===gid),0);return `var(--c${(i%8)+1})`}
+function pc(v){return S.income?v/S.income*100:0}
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1600)}
+
+/* ---------- theme ---------- */
+function isDark(){const t=document.documentElement.getAttribute("data-theme");return t==="dark"||(!t&&matchMedia("(prefers-color-scheme:dark)").matches)}
+function applyTheme(t){const r=document.documentElement;if(t)r.setAttribute("data-theme",t);else r.removeAttribute("data-theme");
+  document.getElementById("iconTheme").innerHTML=isDark()?'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/>':'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'}
+let theme=null;try{theme=localStorage.getItem("kb-theme")||null}catch(e){}
+applyTheme(theme);
+document.getElementById("btnTheme").addEventListener("click",()=>{theme=isDark()?"light":"dark";try{localStorage.setItem("kb-theme",theme)}catch(e){}applyTheme(theme)});
+
+/* ---------- animated numbers ---------- */
+const prev={};
+function animNum(el,key,val,suffix){const from=prev[key]??0;prev[key]=val;const reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+  if(reduce||Math.abs(val-from)<0.5){el.textContent=fmt(val)+suffix;return}
+  el.classList.remove("bump");void el.offsetWidth;el.classList.add("bump");
+  const t0=performance.now(),d=650;(function f(t){const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);el.textContent=fmt(from+(val-from)*e)+suffix;if(k<1)requestAnimationFrame(f)})(t0)}
+
+/* ---------- render ---------- */
+function render(){renderTiles();renderDonut();renderSplit();renderSliders();renderTabs();renderChips();renderTable();save()}
+function renderDash(){renderTiles();renderDonut();renderSplit();renderSliders();save()}
+
+const ICONS={wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm0 0V5a2 2 0 0 1 2-2h11"/><circle cx="16" cy="14" r="1.2"/>',
+  bank:'<path d="M3 10h18L12 4zM5 10v8m4-8v8m6-8v8m4-8v8M3 20h18"/>',pig:'<path d="M5 11a6 6 0 0 1 12-1h2l2 2-2 2v2a3 3 0 0 1-3 3h-1l-1 2h-2l-1-2H9l-1 2H6l-1-2-2-1v-5l2-1z"/><circle cx="14" cy="11" r=".8"/>',spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>'};
+function tile(ic,label,id,cls=""){return `<div class="tile ${cls}"><div class="h"><span class="ic"><svg class="i" viewBox="0 0 24 24">${ICONS[ic]}</svg></span>${label}</div><div class="v" id="${id}"></div><div class="s" id="${id}s"></div></div>`}
+function renderTiles(){
+  const el=document.getElementById("tiles");
+  if(!el.children.length){el.innerHTML=tile("wallet","Neto plaća","tIncome")+tile("bank","Prema banci","tBank")+tile("pig","Štednja","tSav")+tile("spark","Neraspoređeno","tFree");
+    document.getElementById("tIncome").outerHTML=`<label class="edit" id="tIncome"><input type="number" id="income" step="10" min="0" value="${S.income}" title="Upiši neto plaću"><span class="u">€</span><svg class="i" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16v4z"/><path d="m13.5 6.5 4 4"/></svg></label>`;
+    document.getElementById("income").addEventListener("input",e=>{S.income=+e.target.value||0;renderDash();refreshTable();S.groups.forEach(g=>syncSlider(g.id))});}
+  const bank=gSum("g1")+S.items.filter(i=>i.group!=="g1"&&/kredit/i.test(i.name)).reduce((a,i)=>a+monthly(i),0);
+  const sav=S.groups.filter(g=>/šted|sted|dionic|etf/i.test(g.name)).reduce((a,g)=>a+gSum(g.id),0);
+  const f=free();
+  document.getElementById("tIncomes").textContent=`${S.items.length} stavki planirano, ${fmt(planned())} € mjesečno`;
+  animNum(document.getElementById("tBank"),"bank",bank," €");document.getElementById("tBanks").textContent=`${Math.round(pc(bank))} % plaće`;
+  animNum(document.getElementById("tSav"),"sav",sav," €");document.getElementById("tSavs").textContent=`${pc(sav).toFixed(1)} % plaće`;
+  animNum(document.getElementById("tFree"),"free",f," €");document.getElementById("tFrees").textContent=f<0?"planiraš više nego što zaradiš":`buffer, ${pc(f).toFixed(1)} % plaće`;
+  document.getElementById("tFree").parentElement.classList.toggle("warn",f<0);
+}
+
+function arc(cx,cy,r,a0,a1){const p=a=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];const [x0,y0]=p(a0),[x1,y1]=p(a1);return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1-a0>Math.PI?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`}
+function renderDonut(){
+  const parts=S.groups.map(g=>({id:g.id,n:g.name,v:gSum(g.id),c:gColor(g.id)})).filter(x=>x.v>0);
+  const f=free();if(f>0)parts.push({id:"__free",n:"Neraspoređeno",v:f,c:"var(--line)"});
+  const tot=parts.reduce((a,x)=>a+x.v,0)||1;const R=86,cx=115,cy=115;let a=-Math.PI/2;
+  const paths=parts.map((x,i)=>{const a1=a+x.v/tot*2*Math.PI;const d=arc(cx,cy,R,a+0.012,Math.max(a+0.012,a1-0.012));a=a1;
+    return `<path class="seg ${sel&&sel!==x.id?'dim':''}" data-g="${x.id}" d="${d}" fill="none" stroke="${x.c}" stroke-width="${sel===x.id?32:24}" pathLength="100" style="animation-delay:${i*40}ms"><title>${x.n}: ${fmt(x.v)} €</title></path>`}).join("");
+  const m=sel?parts.find(x=>x.id===sel):null;
+  const c=m?[m.n,`${fmt(m.v)} €`,`${(m.v/S.income*100).toFixed(1)} % plaće`]:["Neto plaća",`${fmt(S.income)} €`,`planirano ${Math.round(pc(planned()))} %`];
+  document.getElementById("donut").innerHTML=`<svg viewBox="0 0 230 230" width="250">${paths}
+    <text x="${cx}" y="${cy-16}" text-anchor="middle" class="ax">${esc(c[0])}</text><text x="${cx}" y="${cy+8}" text-anchor="middle" font-size="22" font-weight="800">${c[1]}</text><text x="${cx}" y="${cy+28}" text-anchor="middle" class="ax">${c[2]}</text></svg>`;
+  const items=m&&m.id!=="__free"?S.items.filter(i=>i.group===m.id):null;
+  document.getElementById("legend").innerHTML=items?`<div data-g="${m.id}" class="on" style="animation-delay:0ms"><span><span class="sw" style="background:${m.c}"></span><b>${esc(m.n)}</b></span><span class="num">${fmt(m.v)} €</span></div>`+
+      items.map((i,k)=>`<div style="padding-left:30px;cursor:default;animation-delay:${(k+1)*40}ms"><span>${esc(i.name)}</span><span class="num" style="color:var(--muted)">${fmt(monthly(i))} €</span></div>`).join("")+
+      `<div data-g="${m.id}" style="color:var(--a-strong);font-size:13px;animation-delay:${(items.length+1)*40}ms"><span>← natrag na sve kategorije</span></div>`
+    :parts.map((x,k)=>`<div data-g="${x.id}" style="animation-delay:${k*35}ms"><span><span class="sw" style="background:${x.c}"></span><b>${esc(x.n)}</b></span><span class="num">${fmt(x.v)} € <span style="color:var(--muted);font-size:12px">${Math.round(x.v/tot*100)}%</span></span></div>`).join("");
+}
+function renderSplit(){
+  const kind=n=>/šted|sted|etf|dionic|invest/i.test(n)?"s":/bank|auto|pretpl|režij|rezij|stan|osigur|kredit/i.test(n)?"f":"v";
+  const t={f:0,v:0,s:0};S.groups.forEach(g=>{t[kind(g.name)]+=gSum(g.id)});const fr=Math.max(free(),0);const tot=S.income||1;
+  const w=v=>(v/tot*100).toFixed(1)+"%";
+  document.getElementById("split").innerHTML=`<div class="h"><span>Fiksno · promjenjivo · štednja</span><span class="num">${fmt(planned())} € od ${fmt(S.income)} €</span></div>
+    <div class="bar"><span style="width:${w(t.f)};background:var(--a-strong)" title="Fiksno"></span><span style="width:${w(t.v)};background:var(--a-pale)" title="Promjenjivo"></span><span style="width:${w(t.s)};background:var(--c6)" title="Štednja"></span></div>
+    <div class="lg"><span><span class="sw" style="background:var(--a-strong)"></span>Fiksno <b class="num">${fmt(t.f)} €</b> · ${Math.round(pc(t.f))}%</span><span><span class="sw" style="background:var(--a-pale)"></span>Promjenjivo <b class="num">${fmt(t.v)} €</b> · ${Math.round(pc(t.v))}%</span><span><span class="sw" style="background:var(--c6)"></span>Štednja <b class="num">${fmt(t.s)} €</b> · ${Math.round(pc(t.s))}%</span>${fr>0?`<span><span class="sw" style="background:var(--line)"></span>Slobodno <b class="num">${fmt(fr)} €</b></span>`:""}</div>`;
+}
+function toggleSel(id){sel=sel===id?null:id;renderDonut()}
+document.getElementById("donut").addEventListener("click",e=>{const s=e.target.closest("[data-g]");if(s)toggleSel(s.dataset.g)});
+document.getElementById("legend").addEventListener("click",e=>{const s=e.target.closest("[data-g]");if(s)toggleSel(s.dataset.g)});
+
+/* ---------- sliders per category ---------- */
+function renderSliders(){
+  document.getElementById("sliders").innerHTML=S.groups.map((g,k)=>{const v=gSum(g.id),p=pc(v),n=S.items.filter(i=>i.group===g.id).length;
+    return `<div class="sl" style="animation-delay:${k*50}ms" data-g="${g.id}"><span class="g"><span><span class="sw" style="background:${gColor(g.id)}"></span>${esc(g.name)} <span class="n">· ${n} ${n===1?'stavka':'stavki'}</span></span><span class="right"><span class="num amt">${p.toFixed(1)} %</span><span class="pin"><input type="number" min="0" step="1" value="${Math.round(v)}" data-sn="${g.id}" id="sn-${g.id}" ${n?'':'disabled'}><span>€</span></span></span></span>
+    <input type="range" min="0" max="${Math.max(S.income,1)}" step="1" value="${Math.round(v)}" data-sl="${g.id}" id="sl-${g.id}" ${n?'':'disabled'}></div>`}).join("");
+  updPctTotal();
+}
+function updPctTotal(){document.getElementById("pctTotal").textContent=pc(planned()).toFixed(1)+" % · "+fmt(planned())+" €"}
+function setGroupAmount(gid,target){
+  const items=S.items.filter(i=>i.group===gid);if(!items.length)return;
+  const cur=gSum(gid);
+  if(cur>0){const f=target/cur;items.forEach(i=>{i.amount=Math.round((+i.amount||0)*f*100)/100})}
+  else{const each=target/items.length;items.forEach(i=>{i.period="m";i.amount=Math.round(each*100)/100})}
+}
+function syncSlider(gid,src){const v=gSum(gid),p=pc(v);const r=document.getElementById("sl-"+gid),n=document.getElementById("sn-"+gid),row=document.querySelector(`.sl[data-g="${gid}"] .amt`);
+  if(r&&src!=="r"){r.max=Math.max(S.income,1);r.value=Math.round(v)}if(n&&src!=="n"&&document.activeElement!==n)n.value=Math.round(v);if(row)row.textContent=p.toFixed(1)+" %"}
+document.getElementById("sliders").addEventListener("input",e=>{const gid=e.target.dataset.sl||e.target.dataset.sn;if(!gid)return;
+  const v=Math.max(0,+e.target.value||0);setGroupAmount(gid,v);syncSlider(gid,e.target.dataset.sl?"r":"n");updPctTotal();
+  renderTiles();renderDonut();renderSplit();refreshTable();save()});
+
+/* ---------- list ---------- */
+function visible(){let l=S.items.filter(i=>(tab==="all"||i.group===tab)&&(per==="all"||(per==="y"?i.period==="y":i.period!=="y")));
+  if(q){const s=q.toLowerCase();l=l.filter(i=>(i.name+" "+(i.desc||"")+" "+gName(i.group)).toLowerCase().includes(s))}
+  const key=i=>sortKey==="monthly"?monthly(i):sortKey==="amount"?(+i.amount||0):sortKey==="group"?S.groups.findIndex(g=>g.id===i.group):sortKey==="period"?i.period:(i[sortKey]||"").toLowerCase();
+  return l.sort((a,b)=>{const x=key(a),y=key(b);return (x<y?-1:x>y?1:0)*sortDir||((a.name||"")<(b.name||"")?-1:1)})}
+function renderTabs(){const y=S.items.filter(i=>i.period==="y").length;
+  document.getElementById("tabs").innerHTML=[["all","Sve",S.items.length],["m","Mjesečno",S.items.length-y],["y","Godišnje",y]].map(([k,l,c])=>`<button data-per="${k}" class="${per===k?'on':''}">${l}<span>${c}</span></button>`).join("")}
+document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-per]");if(!b)return;per=b.dataset.per;renderTabs();renderTable()});
+const GICONS=[[/bank|kredit/i,'<path d="M3 10h18L12 4zM5 10v8m4-8v8m6-8v8m4-8v8M3 20h18"/>'],[/auto|car/i,'<path d="M5 13 7 7h10l2 6M3 13h18v5h-2m-14 0H3v-5"/><circle cx="7" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>'],[/pretpl|internet|telef/i,'<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8"/>'],[/šted|sted|etf|dionic/i,'<path d="M5 11a6 6 0 0 1 12-1h2l2 2-2 2v2a3 3 0 0 1-3 3h-1l-1 2h-2l-1-2H9l-1 2H6l-1-2-2-1v-5l2-1z"/>'],[/luks|izlas|putov/i,'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'],[/živ|ziv|hran|stan|režij/i,'<path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>'],[/osigur/i,'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>']];
+function gIcon(g){const m=GICONS.find(([r])=>r.test(g.name));return m?`<svg class="i" viewBox="0 0 24 24" style="color:${gColor(g.id)}">${m[1]}</svg>`:`<span class="sw" style="background:${gColor(g.id)};margin:0"></span>`}
+function renderChips(){const el=document.getElementById("chips");
+  el.innerHTML=`<button data-chip="all" class="${tab==='all'?'on':''}"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Sve<span>${S.items.length}</span></button>`+
+    S.groups.map(g=>{const c=S.items.filter(i=>i.group===g.id).length;return `<button data-chip="${g.id}" class="${tab===g.id?'on':''}">${gIcon(g)}${esc(g.name)}<span>${c}</span>${c===0&&S.groups.length>1?` <b data-gdel="${g.id}" title="Obriši kategoriju" style="margin-left:4px;opacity:.6">×</b>`:''}</button>`}).join("")+
+    (addingGroup?`<input id="newGroup" placeholder="Naziv kategorije, Enter" autocomplete="off">`:`<button class="add" data-chip="__add">+ Kategorija</button>`);
+  if(addingGroup){const i=document.getElementById("newGroup");i.focus();i.addEventListener("keydown",e=>{if(e.key==="Enter"){const v=i.value.trim();if(v){S.groups.push({id:"g"+nid(),name:v});toast("Kategorija dodana")}addingGroup=false;render()}if(e.key==="Escape"){addingGroup=false;renderChips()}});i.addEventListener("blur",()=>{if(addingGroup){addingGroup=false;renderChips()}})}}
+function renderTable(){
+  const tb=document.querySelector("#tbl tbody");const rows=visible();
+  document.querySelectorAll("#tbl th[data-s]").forEach(th=>{th.classList.toggle("on",th.dataset.s===sortKey);th.querySelector(".sort").textContent=th.dataset.s===sortKey?(sortDir>0?"↑":"↓"):"↕"});
+  tb.innerHTML=rows.map((i,k)=>`<tr data-id="${i.id}" class="in" style="animation-delay:${Math.min(k,14)*22}ms">
+    <td style="min-width:180px"><input class="name" data-k="name" value="${esc(i.name)}" placeholder="Naziv"></td>
+    <td style="min-width:170px"><input data-k="desc" value="${esc(i.desc)}" placeholder="Opis ili komentar"></td>
+    <td style="min-width:150px"><select data-k="group">${S.groups.map(g=>`<option value="${g.id}" ${g.id===i.group?'selected':''}>${esc(g.name)}</option>`).join("")}</select></td>
+    <td style="min-width:120px"><select data-k="period"><option value="m" ${i.period!=="y"?'selected':''}>mjesečno</option><option value="y" ${i.period==="y"?'selected':''}>godišnje</option></select></td>
+    <td class="r" style="min-width:100px"><input type="number" step="1" min="0" data-k="amount" value="${i.amount}"></td>
+    <td class="r num" style="min-width:100px;font-weight:600">${fmt(monthly(i))} €</td>
+    <td><button class="x" data-del="${i.id}" title="Obriši">×</button></td></tr>`).join("")||`<tr><td colspan="7" class="empty">Nema stavki za ovaj filter.</td></tr>`;
+  const sub=rows.reduce((a,i)=>a+monthly(i),0);
+  tb.innerHTML+=`<tr class="total"><td colspan="5">Prikazano ${rows.length} od ${S.items.length} · mjesečno</td><td class="r num">${fmt(sub)} €</td><td></td></tr>
+    <tr class="total"><td colspan="5">Neraspoređeno od plaće</td><td class="r num free">${fmt(free())} €</td><td></td></tr>`;
+}
+function refreshTable(){S.items.forEach(i=>{const tr=document.querySelector(`#tbl tr[data-id="${i.id}"]`);if(!tr)return;const a=tr.querySelector('[data-k="amount"]');if(document.activeElement!==a)a.value=i.amount;tr.children[5].textContent=fmt(monthly(i))+" €"});
+  const rows=visible();const t=document.querySelectorAll("#tbl tr.total .num");if(t[0])t[0].textContent=fmt(rows.reduce((a,i)=>a+monthly(i),0))+" €";if(t[1])t[1].textContent=fmt(free())+" €"}
+
+document.getElementById("chips").addEventListener("click",e=>{
+  const d=e.target.closest("[data-gdel]");if(d){const id=d.dataset.gdel;if(!S.items.some(i=>i.group===id)){S.groups=S.groups.filter(g=>g.id!==id);if(tab===id)tab="all";render();toast("Kategorija obrisana")}return}
+  const b=e.target.closest("[data-chip]");if(!b)return;if(b.dataset.chip==="__add"){addingGroup=true;renderChips();return}tab=b.dataset.chip;renderChips();renderTable()});
+document.getElementById("q").addEventListener("input",e=>{q=e.target.value;renderTable()});
+document.getElementById("sortSel").addEventListener("change",e=>{const v=e.target.value;if(v==="monthly"){sortKey="monthly";sortDir=-1}else if(v==="monthly-asc"){sortKey="monthly";sortDir=1}else{sortKey=v;sortDir=1}renderTable()});
+document.getElementById("addItem2").addEventListener("click",()=>document.getElementById("addItem").click());
+document.querySelector("#tbl thead").addEventListener("click",e=>{const th=e.target.closest("th[data-s]");if(!th)return;if(sortKey===th.dataset.s)sortDir*=-1;else{sortKey=th.dataset.s;sortDir=1}renderTable()});
+document.getElementById("tbl").addEventListener("input",e=>{
+  const tr=e.target.closest("tr[data-id]");if(!tr)return;const it=S.items.find(x=>x.id===+tr.dataset.id);const k=e.target.dataset.k;if(!it||!k)return;
+  if(k==="amount"){it.amount=+e.target.value||0;syncSlider(it.group)}
+  else if(k==="group"){const old=it.group;it.group=e.target.value;renderChips();syncSlider(old);syncSlider(it.group)}
+  else if(k==="period"){it.period=e.target.value;syncSlider(it.group);renderTabs()}
+  else it[k]=e.target.value;
+  updPctTotal();refreshTable();renderTiles();renderDonut();renderSplit();save()});
+document.getElementById("tbl").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;S.items=S.items.filter(i=>i.id!==+b.dataset.del);render();toast("Stavka obrisana")});
+document.getElementById("addItem").addEventListener("click",()=>{const g=S.groups.some(g=>g.id===tab)?tab:S.groups[S.groups.length-1].id;S.items.push({id:nid(),name:"",desc:"",group:g,period:"m",amount:0});
+  document.body.dataset.view="list";document.querySelectorAll(".mtabs button").forEach(b=>b.classList.toggle("on",b.dataset.v==="list"));sortKey="group";sortDir=1;render();
+  const last=[...document.querySelectorAll('#tbl tr[data-id]')].find(r=>r.querySelector(".name").value==="");last?.querySelector(".name").focus();last?.scrollIntoView({block:"center",behavior:"smooth"})});
+
+/* ---------- excel ---------- */
+document.getElementById("btnXlsx").addEventListener("click",async()=>{
+  if(!window.XLSX){toast("Excel biblioteka nije učitana");return}
+  const rows=visible().map(i=>({Stavka:i.name,Opis:i.desc||"",Kategorija:gName(i.group),Period:i.period==="y"?"godišnje":"mjesečno",Iznos:+i.amount||0,"Mjesečno EUR":monthly(i),"% plaće":Math.round(pc(monthly(i))*10)/10}));
+  rows.push({},{Stavka:"Neto plaća","Mjesečno EUR":S.income},{Stavka:"Ukupno planirano","Mjesečno EUR":planned()},{Stavka:"Neraspoređeno","Mjesečno EUR":free()});
+  const ws=XLSX.utils.json_to_sheet(rows);ws["!cols"]=[{wch:30},{wch:30},{wch:18},{wch:12},{wch:10},{wch:14},{wch:10}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Budžet");
+  const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="kucni-budzet.xlsx";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Excel preuzet")});
+
+/* ---------- misc ---------- */
+document.querySelector(".mtabs").addEventListener("click",e=>{const b=e.target.closest("[data-v]");if(!b)return;document.body.dataset.view=b.dataset.v;document.querySelectorAll(".mtabs button").forEach(x=>x.classList.toggle("on",x===b));window.scrollTo({top:0,behavior:"smooth"})});
+document.body.dataset.view="dash";
+document.getElementById("btnIO").addEventListener("click",()=>{const io=document.getElementById("io");io.classList.toggle("open");document.getElementById("ioText").value=JSON.stringify(S,null,1);if(io.classList.contains("open"))io.scrollIntoView({behavior:"smooth"})});
+document.getElementById("ioCopy").addEventListener("click",()=>{const t=document.getElementById("ioText");t.value=JSON.stringify(S,null,1);navigator.clipboard?.writeText(t.value).then(()=>toast("Kopirano")).catch(()=>{t.select();toast("Označeno, kopiraj ručno")})});
+document.getElementById("ioLoad").addEventListener("click",()=>{try{const o=JSON.parse(document.getElementById("ioText").value);if(!o.items||!o.groups)throw 0;S=o;render();toast("Učitano")}catch(e){toast("Neispravan tekst")}});
+document.getElementById("btnReset").addEventListener("click",()=>{const b=document.getElementById("btnReset");if(b.dataset.arm){S=JSON.parse(JSON.stringify(DEFAULT));delete b.dataset.arm;b.textContent="Vrati zadano";sel=null;tab="all";render();toast("Vraćeno na početno")}else{b.dataset.arm="1";b.textContent="Sigurno? Klikni opet";setTimeout(()=>{delete b.dataset.arm;b.textContent="Vrati zadano"},3000)}});
+
+render();
+/* ---------- Zajednički račun s Aparatima (GitHub sinkronizacija) ----------
+   Prijava i token žive u localStorage ključu "aparati.sync.v1", istom koji koristi app Aparati.
+   Sve aplikacije na zkaraman25.github.io dijele taj ključ, pa je prijava jedna za sve.
+   Podaci ove aplikacije idu u isti repozitorij, grana "data", datoteka budzet.json. */
+const SYNC_FILE = 'budzet.json';
+const SYNC_LABEL = 'Kućni budžet';
+const ACC_REPO_DEFAULT = 'zkaraman25/aparati';
+const LS_SYNC = 'aparati.sync.v1';
+const API = 'https://api.github.com';
+const ACC_PATH = 'racun.json';
+let sync = { repo: '', branch: 'data', path: 'data.json', token: '', user: '', ready: false, lastSync: 0 };
+try { Object.assign(sync, JSON.parse(localStorage.getItem(LS_SYNC) || '{}')); } catch (e) {}
+const saveSync = () => { try { localStorage.setItem(LS_SYNC, JSON.stringify(sync)); } catch (e) {} };
+const connected = () => Boolean(sync.token && sync.repo);
+class SyncError extends Error {}
+function gh(method, path, body) {
+  const headers = { Accept: 'application/vnd.github+json', Authorization: 'Bearer ' + sync.token };
+  if (body) headers['Content-Type'] = 'application/json';
+  return fetch(API + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+}
+function checkAuth(r) {
+  if (r.status === 401) throw new SyncError('Token nije ispravan ili je istekao. Prijavi se ponovno.');
+  if (r.status === 403) throw new SyncError('Token nema dozvolu za ovaj repozitorij.');
+}
+const b64encode = (text) => { let bin = ''; for (const b of new TextEncoder().encode(text)) bin += String.fromCharCode(b); return btoa(bin); };
+const b64decode = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (ch) => ch.charCodeAt(0)));
+const filePath = () => '/repos/' + sync.repo + '/contents/' + SYNC_FILE;
+let remoteSha = null, syncing = false, again = false, syncTimer = null;
+async function pull() {
+  const r = await gh('GET', filePath() + '?ref=' + encodeURIComponent(sync.branch));
+  if (r.status === 404) return { data: null, sha: null };
+  checkAuth(r);
+  if (!r.ok) throw new SyncError('Čitanje podataka nije uspjelo (greška ' + r.status + ').');
+  const j = await r.json();
+  try { return { data: JSON.parse(b64decode(j.content || '')), sha: j.sha }; }
+  catch (e) { throw new SyncError('Datoteka s podacima u repozitoriju nije čitljiva.'); }
+}
+async function push(sha) {
+  const body = { message: SYNC_LABEL + ': izmjena', content: b64encode(JSON.stringify(syncGet(), null, 1) + '\n'), branch: sync.branch };
+  if (sha) body.sha = sha;
+  const r = await gh('PUT', filePath(), body);
+  if (r.status === 409 || r.status === 422) return null;
+  checkAuth(r);
+  if (!r.ok) throw new SyncError('Spremanje nije uspjelo (greška ' + r.status + ').');
+  const j = await r.json(); return j.content && j.content.sha;
+}
+function scheduleSync(ms) { if (!connected()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, ms); }
+async function syncNow(initial) {
+  if (!connected()) return { ok: false, message: '' };
+  if (syncing) { again = true; return { ok: true }; }
+  syncing = true; setStatus('busy');
+  let result = { ok: true };
+  try {
+    let done = false;
+    for (let i = 0; i < 4 && !done; i++) {
+      const remote = await pull();
+      if (remote.data && (remote.data.updatedAt || 0) >= (syncGet().updatedAt || 0) && JSON.stringify(remote.data) !== JSON.stringify(syncGet())) { syncSet(remote.data); render(); }
+      if (remote.data && JSON.stringify(remote.data) === JSON.stringify(syncGet())) { remoteSha = remote.sha; done = true; break; }
+      const sha = await push(remote.sha);
+      if (sha) { remoteSha = sha; done = true; }
+    }
+    if (!done) throw new SyncError('Sinkronizacija nije uspjela, pokušaj ponovno.');
+    sync.lastSync = Date.now(); saveSync(); setStatus('ok');
+  } catch (e) {
+    const offline = !(e instanceof SyncError);
+    result = { ok: false, message: offline ? 'Nema veze s GitHubom.' : e.message };
+    setStatus(offline ? 'offline' : 'error', result.message);
+  } finally { syncing = false; if (again) { again = false; scheduleSync(300); } }
+  return result;
+}
+function setStatus(kind, message) {
+  const btn = document.getElementById('statusBtn'); if (!btn) return;
+  btn.dataset.state = kind;
+  const text = { local: 'Prijava', busy: 'Sinkroniziram…', ok: sync.user || 'Prijavljen', error: 'Greška', offline: 'Nema veze' }[kind];
+  document.getElementById('statusText').textContent = text;
+  btn.title = message || (kind === 'local' ? 'Prijavi se istim računom kao u Aparatima' : 'Račun i podaci');
+  const dlg = document.getElementById('acctDlg'); if (dlg && dlg.open) drawAccount(message);
+}
+addEventListener('online', () => scheduleSync(500));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && connected() && Date.now() - sync.lastSync > 20000) scheduleSync(0); });
+
+/* prijava: isti račun kao Aparati (korisničko ime + lozinka otključaju token iz racun.json) */
+const toB64 = (buf) => { let bin = ''; for (const b of new Uint8Array(buf)) bin += String.fromCharCode(b); return btoa(bin); };
+const fromB64 = (str) => Uint8Array.from(atob(str), (ch) => ch.charCodeAt(0));
+async function passKey(password, salt, rounds) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: rounds, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function unlockToken(rec, password, user) {
+  const key = await passKey(password, fromB64(rec.salt), Number(rec.rounds) || 600000);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(rec.iv), additionalData: new TextEncoder().encode(user) }, key, fromB64(rec.ct));
+  return new TextDecoder().decode(plain);
+}
+async function readAccounts(repo, branch) {
+  const r = await fetch(API + '/repos/' + repo + '/contents/' + ACC_PATH + '?ref=' + encodeURIComponent(branch), { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store' });
+  if (r.status === 404) return { users: {}, missing: true };
+  if (r.status === 403 || r.status === 429) throw new SyncError('GitHub trenutno ne dopušta čitanje (previše pokušaja). Pričekaj par minuta.');
+  if (!r.ok) throw new SyncError('Čitanje računa nije uspjelo (greška ' + r.status + ').');
+  const j = await r.json(); let users = {};
+  try { const d = JSON.parse(b64decode(j.content || '')); if (d && d.users) users = d.users; } catch (e) {}
+  return { users, missing: false };
+}
+function drawAccount(message) {
+  const on = connected();
+  document.getElementById('loginView').hidden = on;
+  document.getElementById('acctView').hidden = !on;
+  document.getElementById('acctTitle').textContent = on ? 'Račun' : 'Prijava';
+  if (on) {
+    document.getElementById('acctWho').textContent = 'Prijavljen si kao ' + (sync.user || '?') + '. Podaci su isti na svakom uređaju, zajedno s Aparatima.';
+    document.getElementById('acctSync').textContent = sync.lastSync ? 'Zadnja sinkronizacija u ' + new Date(sync.lastSync).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' }) + '.' : '';
+    document.getElementById('acctErr').textContent = message || '';
+  }
+}
+function openAccount() { drawAccount(); document.getElementById('lErr').textContent = ''; document.getElementById('lUser').value = sync.user || ''; document.getElementById('lPass').value = ''; document.getElementById('acctDlg').showModal(); }
+async function login() {
+  const err = document.getElementById('lErr'); err.textContent = '';
+  const user = document.getElementById('lUser').value.trim().toLowerCase(), password = document.getElementById('lPass').value;
+  if (!user) { err.textContent = 'Upiši korisničko ime.'; return; }
+  if (!password) { err.textContent = 'Upiši lozinku.'; return; }
+  if (!(crypto && crypto.subtle)) { err.textContent = 'Prijava radi samo na https adresi.'; return; }
+  const repo = sync.repo || ACC_REPO_DEFAULT, branch = sync.branch || 'data';
+  const btn = document.getElementById('loginBtn'); btn.disabled = true; btn.textContent = 'Prijavljujem…';
+  try {
+    const acc = await readAccounts(repo, branch);
+    const rec = acc.users[user];
+    if (!rec) { err.textContent = acc.missing ? 'Još nema računa. Napravi ga u Aparatima.' : 'Račun „' + user + '” ne postoji.'; return; }
+    let token; try { token = await unlockToken(rec, password, user); } catch (e) { err.textContent = 'Kriva lozinka.'; return; }
+    Object.assign(sync, { repo, branch, path: sync.path || 'data.json', token, user, ready: false, lastSync: 0 }); saveSync();
+    const res = await syncNow(true);
+    if (!res.ok) { sync.token = ''; saveSync(); setStatus('local'); err.textContent = res.message; return; }
+    drawAccount(); toast('Prijavljen si kao ' + user);
+  } catch (e) { err.textContent = e instanceof SyncError ? e.message : 'Nema veze s GitHubom.'; }
+  finally { btn.disabled = false; btn.textContent = 'Prijavi se'; }
+}
+function logout() { sync.token = ''; sync.user = ''; sync.ready = false; saveSync(); setStatus('local'); drawAccount(); toast('Odjavljen. Podaci ostaju u ovom pregledniku.'); }
+document.getElementById('statusBtn').addEventListener('click', openAccount);
+document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('acctClose').addEventListener('click', () => document.getElementById('acctDlg').close());
+document.getElementById('acctDlg').addEventListener('click', (e) => { if (e.target.id === 'acctDlg') e.target.close(); });
+document.getElementById('lPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+setStatus(connected() ? 'ok' : 'local');
+if (connected()) syncNow(true);
+
+</script>
+
+</body>
+</html>
